@@ -22,7 +22,13 @@
         </GridLayout>
 
         <!-- Modal -->
-        <UserModal v-if="modalVisible" :user="selectedUser" :mode="modalMode" @close="onModalClose" />
+        <UserModal
+            v-if="modalVisible"
+            :user="selectedUser"
+            :mode="modalMode"
+            @close="onModalClose"
+            @delete="onModalDelete"
+        />
     </Page>
 </template>
 
@@ -151,10 +157,15 @@ export default {
                 this.fetchUsers();
             }
         },
+        async onModalDelete(id) {
+            this.modalVisible = false;
+            await this.deleteUser(id);
+        },
     },
 };
 </script>
 
+// ...existing style...
 <style scoped>
 .user-item {
     padding: 10;

@@ -5,6 +5,13 @@
         <StackLayout row="2" orientation="horizontal" horizontalAlignment="right" marginTop="20">
             <Button text="Cancelar" @tap="$emit('close', false)" />
             <Button :text="mode === 'edit' ? 'Actualizar' : 'Crear'" @tap="submit" />
+            <Button
+                v-if="mode === 'edit'"
+                text="Eliminar"
+                class="delete-button"
+                @tap="confirmDelete"
+                marginLeft="10"
+            />
         </StackLayout>
     </GridLayout>
 </template>
@@ -61,6 +68,17 @@ export default {
                 this.$emit('close', true)
             } catch (err) {
                 dialogs.alert({ title: 'Error', message: err.message, okButtonText: 'OK' })
+            }
+        },
+        async confirmDelete() {
+            const result = await dialogs.confirm({
+                title: 'Confirmar eliminación',
+                message: `¿Eliminar usuario ${this.name}?`,
+                okButtonText: 'Sí',
+                cancelButtonText: 'No',
+            });
+            if (result) {
+                this.$emit('delete', this.user.id);
             }
         },
     },
