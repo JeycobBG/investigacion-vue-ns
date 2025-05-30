@@ -146,15 +146,14 @@ export default {
                 this.isLoading = false;
             }
         },
-        onModalClose(updated) {
-            this.modalVisible = false;
-            if (updated) {
-
-                setTimeout(() => {
-                    this.fetchUsers();
-                }, 300);
-            }
-        },
+       onModalClose(updated) {
+    this.modalVisible = false;
+    if (updated) {
+        this.$nextTick(() => {
+            this.fetchUsers();
+        });
+    }
+},
         async onModalDelete(id) {
             this.modalVisible = false;
             await this.deleteUser(id);
