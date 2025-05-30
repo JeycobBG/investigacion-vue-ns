@@ -7,7 +7,7 @@
 
             <StackLayout row="1">
                 <ActivityIndicator :busy="isLoading" />
-                <ListView for="user in users" @itemTap="onItemTap" row="1" class="user-list">
+                <ListView for="user in users" @itemTap="onItemTap" class="user-list">
                     <v-template>
                         <GridLayout columns="*, auto" class="user-item">
                             <Label :text="user.name" col="0" class="username" />
@@ -28,7 +28,7 @@
 
 <script>
 import UserModal from './UserModal.vue';
-import { dialogs } from '@nativescript/core';
+import { Dialogs } from '@nativescript/core';
 
 export default {
     components: { UserModal },
@@ -38,7 +38,7 @@ export default {
             modalVisible: false,
             modalMode: 'create', // 'create' o 'edit'
             selectedUser: null,
-            isLoading: false, // Indicador de carga
+            isLoading: false,
         };
     },
     mounted() {
@@ -58,7 +58,7 @@ export default {
                     fetch('http://10.0.2.2:5140/api/User', {
                         method: 'GET',
                         headers: {
-                            Accept: 'application/json',
+                            'Accept': 'application/json',
                             'Content-Type': 'application/json',
                         },
                     }),
@@ -75,8 +75,8 @@ export default {
                 console.log('Usuarios recibidos:', data);
                 this.users = data;
             } catch (err) {
-                console.error('Error al obtener usuarios:', err, err.stack);
-                await dialogs.alert({
+                console.error('Error al obtener usuarios:', err);
+                await Dialogs.alert({
                     title: 'Error',
                     message: err.message || 'No se pudo conectar al servidor',
                     okButtonText: 'OK',
@@ -96,14 +96,13 @@ export default {
             this.modalVisible = true;
         },
         onItemTap(event) {
-            // Maneja el evento itemTap del ListView
             const user = event.item;
-            this.openEditModal(user); // Abre el modal de edición al tocar un ítem
+            this.openEditModal(user);
         },
         async confirmDelete(user) {
-            const result = await dialogs.confirm({
+            const result = await Dialogs.confirm({
                 title: 'Confirmar eliminación',
-                message: `¿Eliminar usuario ${user.username}?`,
+                message: `¿Eliminar usuario ${user.name}?`,
                 okButtonText: 'Sí',
                 cancelButtonText: 'No',
             });
@@ -118,7 +117,7 @@ export default {
                 const res = await fetch(`http://10.0.2.2:5140/api/User/${id}`, {
                     method: 'DELETE',
                     headers: {
-                        Accept: 'application/json',
+                        'Accept': 'application/json',
                         'Content-Type': 'application/json',
                     },
                 });
@@ -129,7 +128,7 @@ export default {
                     throw new Error(error.message || 'Error al eliminar');
                 }
                 console.log('Usuario eliminado correctamente.');
-                await dialogs.alert({
+                await Dialogs.alert({
                     title: 'Éxito',
                     message: 'Usuario eliminado',
                     okButtonText: 'OK',
@@ -137,7 +136,7 @@ export default {
                 await this.fetchUsers();
             } catch (err) {
                 console.error('Error al eliminar usuario:', err);
-                await dialogs.alert({
+                await Dialogs.alert({
                     title: 'Error',
                     message: err.message || 'No se pudo eliminar el usuario',
                     okButtonText: 'OK',
