@@ -22,13 +22,8 @@
         </GridLayout>
 
         <!-- Modal -->
-        <UserModal
-            v-if="modalVisible"
-            :user="selectedUser"
-            :mode="modalMode"
-            @close="onModalClose"
-            @delete="onModalDelete"
-        />
+        <UserModal v-if="modalVisible" :user="selectedUser" :mode="modalMode" @close="onModalClose"
+            @delete="onModalDelete" />
     </Page>
 </template>
 
@@ -154,7 +149,10 @@ export default {
         onModalClose(updated) {
             this.modalVisible = false;
             if (updated) {
-                this.fetchUsers();
+
+                setTimeout(() => {
+                    this.fetchUsers();
+                }, 300);
             }
         },
         async onModalDelete(id) {

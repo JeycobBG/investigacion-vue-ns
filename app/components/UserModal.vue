@@ -5,13 +5,7 @@
         <StackLayout row="2" orientation="horizontal" horizontalAlignment="right" marginTop="20">
             <Button text="Cancelar" @tap="$emit('close', false)" />
             <Button :text="mode === 'edit' ? 'Actualizar' : 'Crear'" @tap="submit" />
-            <Button
-                v-if="mode === 'edit'"
-                text="Eliminar"
-                class="delete-button"
-                @tap="confirmDelete"
-                marginLeft="10"
-            />
+            <Button v-if="mode === 'edit'" text="Eliminar" class="delete-button" @tap="confirmDelete" marginLeft="10" />
         </StackLayout>
     </GridLayout>
 </template>
@@ -64,8 +58,7 @@ export default {
                     message: this.mode === 'edit' ? 'Usuario actualizado' : 'Usuario creado',
                     okButtonText: 'OK',
                 })
-
-                this.$emit('close', true)
+                setTimeout(() => this.$emit('close', true), 100);
             } catch (err) {
                 dialogs.alert({ title: 'Error', message: err.message, okButtonText: 'OK' })
             }
