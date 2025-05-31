@@ -3,9 +3,15 @@
         <ActionBar title="Usuarios" />
         <GridLayout rows="auto, *" columns="*">
             <Button text="Crear Usuario" @tap="openCreateModal" row="0" class="create-button" />
-            <StackLayout row="1">
-                <ActivityIndicator :busy="isLoading" />
-                <ListView :key="listKey" for="user in users" @itemTap="onItemTap" class="user-list">
+            <GridLayout row="1" rows="*">
+                <ActivityIndicator :busy="isLoading" rowSpan="1" />
+                <ListView 
+                    :key="listKey" 
+                    for="user in users" 
+                    @itemTap="onItemTap" 
+                    class="user-list"
+                    row="0"
+                    height="100%">
                     <v-template>
                         <GridLayout columns="*, auto" class="user-item">
                             <Label :text="user.name" col="0" class="username" />
@@ -16,7 +22,7 @@
                         </GridLayout>
                     </v-template>
                 </ListView>
-            </StackLayout>
+            </GridLayout>
         </GridLayout>
     </Page>
 </template>
@@ -35,19 +41,10 @@ export default {
         };
     },
     mounted() {
-        console.log('---------------------------');
-        console.log('Componente UserList montado');
-        console.log('---------------------------');
         this.fetchUsers();
-    },
-    watch: {
-        users(newUsers) {
-            console.log('Lista de usuarios actualizada:', newUsers);
-        },
     },
     methods: {
         async fetchUsers() {
-            console.log('Obteniendo usuarios...');
             this.isLoading = true;
             try {
                 const res = await fetch('http://10.0.2.2:5140/api/User', {
@@ -64,19 +61,13 @@ export default {
                 }
 
                 const data = await res.json();
-                if (!Array.isArray(data)) {
-                    throw new Error('La respuesta no es un array válido.');
-                }
-
-                // Mapear los datos para asegurar la estructura correcta
                 const mappedData = data.map(user => ({
                     id: user.id || user.Id,
                     name: user.name || user.Name,
                     email: user.email || user.Email,
                 }));
 
-                console.log('Usuarios recibidos:', mappedData);
-                this.$set(this, 'users', [...mappedData]);
+                this.users = [...mappedData];
             } catch (err) {
                 await Dialogs.alert({
                     title: 'Error',
@@ -87,32 +78,44 @@ export default {
                 this.isLoading = false;
             }
         },
+        
         openCreateModal() {
-            console.log('Abriendo modal para crear usuario');
-            const options = {
-                context: { user: null, mode: 'create' },
+            this.$showModal(UserModal, {
+                props: {
+                    userData: { id: null, name: '', email: '' },
+                    isEditMode: false
+                },
                 fullscreen: false,
-            };
-            this.$showModal(UserModal, options).then((result) => {
-                console.log('Resultado del modal:', result);
+            }).then((result) => {
                 if (result === 'refresh') {
                     this.refreshPage();
                 }
             });
         },
+        
         openEditModal(user) {
-            console.log('Abriendo modal para editar usuario:', user);
-            const options = {
-                context: { user: { ...user }, mode: 'edit' },
+            this.$showModal(UserModal, {
+                props: {
+                    userData: {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email
+                    },
+                    isEditMode: true
+                },
                 fullscreen: false,
-            };
-            this.$showModal(UserModal, options).then((result) => {
-                console.log('Resultado del modal:', result);
+            }).then((result) => {
                 if (result === 'refresh') {
                     this.refreshPage();
                 }
             });
         },
+        
+        onItemTap(event) {
+            const user = event.item;
+            this.openEditModal(user);
+        },
+        
         async confirmDelete(user) {
             const result = await Dialogs.confirm({
                 title: 'Confirmar eliminación',
@@ -124,8 +127,8 @@ export default {
                 await this.deleteUser(user.id);
             }
         },
+        
         async deleteUser(id) {
-            console.log('Eliminando usuario con ID:', id);
             this.isLoading = true;
             try {
                 const res = await fetch(`http://10.0.2.2:5140/api/User/${id}`, {
@@ -138,11 +141,9 @@ export default {
 
                 if (!res.ok) {
                     const error = await res.json();
-                    console.error('Error del backend:', error);
                     throw new Error(error.message || 'Error al eliminar');
                 }
 
-                console.log('Usuario eliminado correctamente.');
                 await Dialogs.alert({
                     title: 'Éxito',
                     message: 'Usuario eliminado',
@@ -151,7 +152,6 @@ export default {
 
                 this.refreshPage();
             } catch (err) {
-                console.error('Error al eliminar usuario:', err);
                 await Dialogs.alert({
                     title: 'Error',
                     message: err.message || 'No se pudo eliminar el usuario',
@@ -161,8 +161,8 @@ export default {
                 this.isLoading = false;
             }
         },
+        
         refreshPage() {
-            console.log('Refrescando lista de usuarios...');
             this.fetchUsers().then(() => {
                 this.listKey += 1;
             });
@@ -171,7 +171,6 @@ export default {
 };
 </script>
 
-// ...existing style...
 <style scoped>
 .user-item {
     padding: 10;
