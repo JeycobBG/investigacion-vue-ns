@@ -27,14 +27,18 @@ export default {
     methods: {
         async submit() {
             if (!this.name || !this.email) {
-                dialogs.alert({ title: 'Error', message: 'Nombre y email son requeridos', okButtonText: 'OK' })
+                await dialogs.alert({ 
+                    title: 'Error', 
+                    message: 'Nombre y email son requeridos', 
+                    okButtonText: 'OK' 
+                })
                 return
             }
+            
             try {
-                const url =
-                    this.mode === 'edit'
-                        ? `http://10.0.2.2:5140/api/User/${this.user.id}`
-                        : 'http://10.0.2.2:5140/api/User'
+                const url = this.mode === 'edit'
+                    ? `http://10.0.2.2:5140/api/User/${this.user.id}`
+                    : 'http://10.0.2.2:5140/api/User'
                 const method = this.mode === 'edit' ? 'PUT' : 'POST'
 
                 const body = {
@@ -53,27 +57,49 @@ export default {
                     throw new Error(error.message || 'Error en la petición')
                 }
 
-                dialogs.alert({
+                // Mostrar mensaje de éxito
+                await dialogs.alert({
                     title: 'Éxito',
-                    message: this.mode === 'edit' ? 'Usuario actualizado' : 'Usuario creado',
+                    message: this.mode === 'edit' ? 'Usuario actualizado correctamente' : 'Usuario creado correctamente',
                     okButtonText: 'OK',
                 })
-                setTimeout(() => this.$emit('close', true), 100);
+                
+                // Emitir evento de cierre con éxito (sin setTimeout)
+                this.$emit('close', true);
+                
             } catch (err) {
-                dialogs.alert({ title: 'Error', message: err.message, okButtonText: 'OK' })
+                console.error('Error en submit:', err);
+                await dialogs.alert({ 
+                    title: 'Error', 
+                    message: err.message || 'Error desconocido', 
+                    okButtonText: 'OK' 
+                })
             }
         },
+        
         async confirmDelete() {
-            const result = await dialogs.confirm({
-                title: 'Confirmar eliminación',
-                message: `¿Eliminar usuario ${this.name}?`,
-                okButtonText: 'Sí',
-                cancelButtonText: 'No',
-            });
-            if (result) {
-                this.$emit('delete', this.user.id);
+            try {
+                const result = await dialogs.confirm({
+                    title: 'Confirmar eliminación',
+                    message: `¿Estás seguro de que quieres eliminar al usuario "${this.name}"?`,
+                    okButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar',
+                });
+                
+                if (result) {
+                    this.$emit('delete', this.user.id);
+                }
+            } catch (err) {
+                console.error('Error en confirmDelete:', err);
             }
         },
     },
 }
 </script>
+
+<style scoped>
+.delete-button {
+    background-color: #F44336;
+    color: white;
+}
+</style>

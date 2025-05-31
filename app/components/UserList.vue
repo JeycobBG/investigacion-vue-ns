@@ -146,12 +146,17 @@ export default {
                 this.isLoading = false;
             }
         },
-       onModalClose(updated) {
+       async onModalClose(updated) {
     this.modalVisible = false;
     if (updated) {
-        this.$nextTick(() => {
-            this.fetchUsers();
-        });
+        // Esperamos un momento antes de actualizar la lista
+        // para asegurar que el modal se haya cerrado completamente
+        try {
+            await new Promise(resolve => setTimeout(resolve, 300));
+            await this.fetchUsers();
+        } catch (err) {
+            console.error('Error al actualizar la lista:', err);
+        }
     }
 },
         async onModalDelete(id) {
