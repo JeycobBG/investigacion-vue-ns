@@ -148,7 +148,10 @@ export default {
         onModalClose(shouldRefresh) {
             this.modalVisible = false;
             if (shouldRefresh) {
-                this.fetchUsers(); // Refresca la lista cuando el modal se cierra con éxito
+                this.fetchUsers().then(() => {
+                this.$forceUpdate(); // Fuerza el renderizado del componente
+                });
+
             }
         },
     },
