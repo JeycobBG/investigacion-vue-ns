@@ -1,10 +1,8 @@
 <template>
     <Page>
         <ActionBar title="Usuarios" />
-
         <GridLayout rows="auto, *" columns="*">
             <Button text="Crear Usuario" @tap="openCreateModal" row="0" class="create-button" />
-
             <StackLayout row="1">
                 <ActivityIndicator :busy="isLoading" />
                 <ListView v-if="listViewVisible" :key="listKey" for="user in users" @itemTap="onItemTap"
@@ -21,15 +19,20 @@
                 </ListView>
             </StackLayout>
         </GridLayout>
-
         <!-- Modal -->
-        <UserModal v-if="modalVisible" :user="selectedUser" :mode="modalMode" @close="onModalClose" />
+        <UserModal
+            v-if="modalVisible"
+            :user="selectedUser"
+            :mode="modalMode"
+            @close="onModalClose"
+            @refreshUsers="refreshPage"
+        />
     </Page>
 </template>
 
 <script>
 import UserModal from './UserModal.vue';
-import { Dialogs } from '@nativescript/core';
+import { Dialogs, isAndroid } from '@nativescript/core';
 
 export default {
     components: { UserModal },
@@ -39,7 +42,7 @@ export default {
             listKey: 0, // Usado para forzar el render del ListView
             listViewVisible: true, // Control de visibilidad para forzar reconstrucción
             modalVisible: false,
-            modalMode: 'create', // 'create' o 'edit'
+            modalMode: 'create',
             selectedUser: null,
             isLoading: false,
         };
@@ -56,21 +59,13 @@ export default {
             console.log('Obteniendo usuarios...');
             this.isLoading = true;
             try {
-                const timeout = (ms) =>
-                    new Promise((_, reject) => {
-                        setTimeout(() => reject(new Error('Request timed out')), ms);
-                    });
-
-                const res = await Promise.race([
-                    fetch('http://10.0.2.2:5140/api/User', {
-                        method: 'GET',
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json',
-                        },
-                    }),
-                    timeout(10000),
-                ]);
+                const res = await fetch('http://10.0.2.2:5140/api/User', {
+                    method: 'GET',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                });
 
                 if (!res.ok) {
                     const errorText = await res.text();
@@ -78,20 +73,12 @@ export default {
                 }
 
                 const data = await res.json();
+                if (!Array.isArray(data)) {
+                    throw new Error('La respuesta no es un array válido.');
+                }
 
-                // Forzar recreación del ListView
-                this.listViewVisible = false; // Oculta
-                this.users = data.map(user => ({ ...user }));
-
-                console.log('Usuarios obtenidos:', data);
-                console.log('Cantidad actual:', this.users.length);
-                this.listKey++;               // Cambia key para asegurar nueva instancia
-
-                // Vuelve a mostrarlo después de un ciclo
-                setTimeout(() => {
-                    this.listViewVisible = true;
-                }, 0);
-
+                console.log('Usuarios recibidos:', data);
+                this.users = data;
             } catch (err) {
                 await Dialogs.alert({
                     title: 'Error',
@@ -112,10 +99,6 @@ export default {
             this.modalMode = 'edit';
             this.modalVisible = true;
         },
-        onItemTap(event) {
-            const user = event.item;
-            this.openEditModal(user);
-        },
         async confirmDelete(user) {
             const result = await Dialogs.confirm({
                 title: 'Confirmar eliminación',
@@ -133,21 +116,25 @@ export default {
                 const res = await fetch(`http://10.0.2.2:5140/api/User/${id}`, {
                     method: 'DELETE',
                     headers: {
-                        'Accept': 'application/json',
+                        Accept: 'application/json',
                         'Content-Type': 'application/json',
                     },
                 });
+
                 if (!res.ok) {
                     const error = await res.json();
                     console.error('Error del backend:', error);
                     throw new Error(error.message || 'Error al eliminar');
                 }
+
+                console.log('Usuario eliminado correctamente.');
                 await Dialogs.alert({
                     title: 'Éxito',
                     message: 'Usuario eliminado',
                     okButtonText: 'OK',
                 });
-                await this.fetchUsers(); // Refresca la lista después de eliminar
+
+                this.refreshPage();
             } catch (err) {
                 console.error('Error al eliminar usuario:', err);
                 await Dialogs.alert({
@@ -159,20 +146,21 @@ export default {
                 this.isLoading = false;
             }
         },
-        onModalClose(shouldRefresh) {
-            console.log('---------------------------');
-            console.log('ENTRO A REFRESH UP ' + shouldRefresh);
-            console.log('---------------------------');
+        onModalClose() {
             this.modalVisible = false;
-            if (shouldRefresh) {
-                this.fetchUsers().then(() => {
-                    console.log('---------------------------');
-                    console.log('ENTRO A REFRESH');
-                    console.log('---------------------------');
-                    this.$forceUpdate(); // Fuerza el renderizado del componente
+        },
+        refreshPage() {
+            // Recargar completamente la página
+            if (isAndroid) {
+                const activity = this.$nativePage.android.activity;
+                activity.recreate();
+            } else {
+                this.$navigateTo(this.$options.components.UserList, {
+                    clearHistory: true,
                 });
-
             }
+            // También refrescamos los datos
+            this.fetchUsers();
         },
     },
 };
@@ -184,29 +172,24 @@ export default {
     border-bottom-width: 1;
     border-color: #ccc;
 }
-
 .username {
     font-size: 16;
     vertical-align: center;
 }
-
 .create-button {
     background-color: #4CAF50;
     color: white;
     margin: 10;
 }
-
 .edit-button {
     background-color: #2196F3;
     color: white;
     margin-right: 5;
 }
-
 .delete-button {
     background-color: #F44336;
     color: white;
 }
-
 .user-list {
     margin: 10;
 }
