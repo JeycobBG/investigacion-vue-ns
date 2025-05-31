@@ -63,6 +63,9 @@ export default {
                 this.$emit('refreshUsers');
 
                 // Cerrar modal
+                console.log('-------------------------------');
+                console.log('Emitiendo evento close con true');
+                console.log('-------------------------------');
                 this.$emit('close', true);
             } catch (err) {
                 dialogs.alert({ title: 'Error', message: err.message, okButtonText: 'OK' });

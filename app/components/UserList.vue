@@ -7,7 +7,8 @@
 
             <StackLayout row="1">
                 <ActivityIndicator :busy="isLoading" />
-                <ListView for="user in users" @itemTap="onItemTap" class="user-list">
+                <ListView v-if="listViewVisible" :key="listKey" for="user in users" @itemTap="onItemTap"
+                    class="user-list">
                     <v-template>
                         <GridLayout columns="*, auto" class="user-item">
                             <Label :text="user.name" col="0" class="username" />
@@ -35,6 +36,8 @@ export default {
     data() {
         return {
             users: [],
+            listKey: 0, // Usado para forzar el render del ListView
+            listViewVisible: true, // Control de visibilidad para forzar reconstrucción
             modalVisible: false,
             modalMode: 'create', // 'create' o 'edit'
             selectedUser: null,
@@ -42,6 +45,10 @@ export default {
         };
     },
     mounted() {
+        console.log('---------------------------');
+        console.log('Componente UserList montado');
+        console.log('---------------------------');
+
         this.fetchUsers();
     },
     methods: {
@@ -65,17 +72,27 @@ export default {
                     timeout(10000),
                 ]);
 
-                console.log('Respuesta recibida:', res);
                 if (!res.ok) {
                     const errorText = await res.text();
-                    console.error('Error del servidor:', errorText);
                     throw new Error(`Error al obtener usuarios: ${res.status} ${res.statusText}`);
                 }
+
                 const data = await res.json();
-                console.log('Usuarios recibidos:', data);
-                this.users = data;
+
+                // Forzar recreación del ListView
+                this.listViewVisible = false; // Oculta
+                this.users = data.map(user => ({ ...user }));
+
+                console.log('Usuarios obtenidos:', data);
+                console.log('Cantidad actual:', this.users.length);
+                this.listKey++;               // Cambia key para asegurar nueva instancia
+
+                // Vuelve a mostrarlo después de un ciclo
+                setTimeout(() => {
+                    this.listViewVisible = true;
+                }, 0);
+
             } catch (err) {
-                console.error('Error al obtener usuarios:', err);
                 await Dialogs.alert({
                     title: 'Error',
                     message: err.message || 'No se pudo conectar al servidor',
@@ -111,7 +128,6 @@ export default {
             }
         },
         async deleteUser(id) {
-            console.log(`Eliminando usuario con ID: ${id}`);
             this.isLoading = true;
             try {
                 const res = await fetch(`http://10.0.2.2:5140/api/User/${id}`, {
@@ -121,13 +137,11 @@ export default {
                         'Content-Type': 'application/json',
                     },
                 });
-                console.log('Respuesta de eliminación:', res);
                 if (!res.ok) {
                     const error = await res.json();
                     console.error('Error del backend:', error);
                     throw new Error(error.message || 'Error al eliminar');
                 }
-                console.log('Usuario eliminado correctamente.');
                 await Dialogs.alert({
                     title: 'Éxito',
                     message: 'Usuario eliminado',
@@ -146,10 +160,16 @@ export default {
             }
         },
         onModalClose(shouldRefresh) {
+            console.log('---------------------------');
+            console.log('ENTRO A REFRESH UP ' + shouldRefresh);
+            console.log('---------------------------');
             this.modalVisible = false;
             if (shouldRefresh) {
                 this.fetchUsers().then(() => {
-                this.$forceUpdate(); // Fuerza el renderizado del componente
+                    console.log('---------------------------');
+                    console.log('ENTRO A REFRESH');
+                    console.log('---------------------------');
+                    this.$forceUpdate(); // Fuerza el renderizado del componente
                 });
 
             }
