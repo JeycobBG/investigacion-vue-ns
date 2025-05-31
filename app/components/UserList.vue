@@ -19,6 +19,7 @@
                 </ListView>
             </StackLayout>
         </GridLayout>
+        
         <!-- Modal -->
         <UserModal
             v-if="modalVisible"
@@ -32,7 +33,7 @@
 
 <script>
 import UserModal from './UserModal.vue';
-import { Dialogs, isAndroid } from '@nativescript/core';
+import { Dialogs } from '@nativescript/core';
 
 export default {
     components: { UserModal },
@@ -56,34 +57,19 @@ export default {
     },
     methods: {
         async fetchUsers() {
-            console.log('Obteniendo usuarios...');
             this.isLoading = true;
             try {
-                const res = await fetch('http://10.0.2.2:5140/api/User', {
-                    method: 'GET',
-                    headers: {
-                        Accept: 'application/json',
-                        'Content-Type': 'application/json',
-                    },
-                });
-
-                if (!res.ok) {
-                    const errorText = await res.text();
-                    throw new Error(`Error al obtener usuarios: ${res.status} ${res.statusText}`);
-                }
-
+                const res = await fetch('http://10.0.2.2:5140/api/User');
+                if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
+                
                 const data = await res.json();
-                if (!Array.isArray(data)) {
-                    throw new Error('La respuesta no es un array válido.');
-                }
-
-                console.log('Usuarios recibidos:', data);
-                this.users = data;
+                this.users = Array.isArray(data) ? data : [];
             } catch (err) {
-                await Dialogs.alert({
+                console.error('Error al obtener usuarios:', err);
+                Dialogs.alert({
                     title: 'Error',
-                    message: err.message || 'No se pudo conectar al servidor',
-                    okButtonText: 'OK',
+                    message: 'No se pudieron cargar los usuarios',
+                    okButtonText: 'OK'
                 });
             } finally {
                 this.isLoading = false;
@@ -100,47 +86,35 @@ export default {
             this.modalVisible = true;
         },
         async confirmDelete(user) {
-            const result = await Dialogs.confirm({
-                title: 'Confirmar eliminación',
-                message: `¿Eliminar usuario ${user.name}?`,
+            const confirm = await Dialogs.confirm({
+                title: 'Confirmar',
+                message: `¿Eliminar a ${user.name}?`,
                 okButtonText: 'Sí',
-                cancelButtonText: 'No',
+                cancelButtonText: 'No'
             });
-            if (result) {
-                await this.deleteUser(user.id);
-            }
+            if (confirm) await this.deleteUser(user.id);
         },
         async deleteUser(id) {
             this.isLoading = true;
             try {
                 const res = await fetch(`http://10.0.2.2:5140/api/User/${id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        Accept: 'application/json',
-                        'Content-Type': 'application/json',
-                    },
+                    method: 'DELETE'
                 });
-
-                if (!res.ok) {
-                    const error = await res.json();
-                    console.error('Error del backend:', error);
-                    throw new Error(error.message || 'Error al eliminar');
-                }
-
-                console.log('Usuario eliminado correctamente.');
-                await Dialogs.alert({
+                
+                if (!res.ok) throw new Error('Error al eliminar');
+                
+                Dialogs.alert({
                     title: 'Éxito',
                     message: 'Usuario eliminado',
-                    okButtonText: 'OK',
+                    okButtonText: 'OK'
                 });
-
+                
                 this.refreshPage();
             } catch (err) {
-                console.error('Error al eliminar usuario:', err);
-                await Dialogs.alert({
+                Dialogs.alert({
                     title: 'Error',
-                    message: err.message || 'No se pudo eliminar el usuario',
-                    okButtonText: 'OK',
+                    message: 'No se pudo eliminar',
+                    okButtonText: 'OK'
                 });
             } finally {
                 this.isLoading = false;
@@ -150,19 +124,27 @@ export default {
             this.modalVisible = false;
         },
         refreshPage() {
-            // Recargar completamente la página
-            if (isAndroid) {
-                const activity = this.$nativePage.android.activity;
-                activity.recreate();
-            } else {
-                this.$navigateTo(this.$options.components.UserList, {
-                    clearHistory: true,
+            // Primero refrescamos los datos
+            this.fetchUsers();
+            
+            // Luego recargamos la vista usando el Frame de Nativescript
+            const frame = require('@nativescript/core/ui/frame').Frame;
+            const currentPage = frame.topmost().currentPage;
+            
+            if (currentPage) {
+                frame.topmost().navigate({
+                    create: () => {
+                        const Vue = require('nativescript-vue').default;
+                        return new Vue({
+                            template: `<UserList />`,
+                            components: { UserList: this.$options }
+                        }).$mount().$el.nativeView;
+                    },
+                    clearHistory: true
                 });
             }
-            // También refrescamos los datos
-            this.fetchUsers();
-        },
-    },
+        }
+    }
 };
 </script>
 
@@ -170,7 +152,7 @@ export default {
 .user-item {
     padding: 10;
     border-bottom-width: 1;
-    border-color: #ccc;
+    border-color: #eee;
 }
 .username {
     font-size: 16;
@@ -180,15 +162,18 @@ export default {
     background-color: #4CAF50;
     color: white;
     margin: 10;
+    border-radius: 5;
 }
 .edit-button {
     background-color: #2196F3;
     color: white;
     margin-right: 5;
+    border-radius: 5;
 }
 .delete-button {
     background-color: #F44336;
     color: white;
+    border-radius: 5;
 }
 .user-list {
     margin: 10;
