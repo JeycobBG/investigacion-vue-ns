@@ -133,7 +133,7 @@ export default {
                     message: 'Usuario eliminado',
                     okButtonText: 'OK',
                 });
-                await this.fetchUsers();
+                await this.fetchUsers(); // Refresca la lista después de eliminar
             } catch (err) {
                 console.error('Error al eliminar usuario:', err);
                 await Dialogs.alert({
@@ -145,10 +145,10 @@ export default {
                 this.isLoading = false;
             }
         },
-        onModalClose(updated) {
+        onModalClose(shouldRefresh) {
             this.modalVisible = false;
-            if (updated) {
-                this.fetchUsers();
+            if (shouldRefresh) {
+                this.fetchUsers(); // Refresca la lista cuando el modal se cierra con éxito
             }
         },
     },

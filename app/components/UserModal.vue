@@ -25,44 +25,46 @@ export default {
     },
     methods: {
         async submit() {
-            if (!this.name || !this.email) {
-                dialogs.alert({ title: 'Error', message: 'Nombre y email son requeridos', okButtonText: 'OK' })
-                return
+        if (!this.name || !this.email) {
+            dialogs.alert({ title: 'Error', message: 'Nombre y email son requeridos', okButtonText: 'OK' })
+            return
+        }
+        
+        try {
+            const url = this.mode === 'edit' 
+                ? `http://10.0.2.2:5140/api/User/${this.user.id}`
+                : 'http://10.0.2.2:5140/api/User'
+            const method = this.mode === 'edit' ? 'PUT' : 'POST'
+
+            const body = {
+                name: this.name,
+                email: this.email
             }
-            try {
-                const url =
-                    this.mode === 'edit'
-                        ? `http://10.0.2.2:5140/api/User/${this.user.id}`
-                        : 'http://10.0.2.2:5140/api/User'
-                const method = this.mode === 'edit' ? 'PUT' : 'POST'
 
-                const body = {
-                    name: this.name,
-                    email: this.email
-                }
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            })
 
-                const res = await fetch(url, {
-                    method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body),
-                })
-
-                if (!res.ok) {
-                    const error = await res.json()
-                    throw new Error(error.message || 'Error en la petición')
-                }
-
-                dialogs.alert({
-                    title: 'Éxito',
-                    message: this.mode === 'edit' ? 'Usuario actualizado' : 'Usuario creado',
-                    okButtonText: 'OK',
-                })
-
-                this.$emit('close', true)
-            } catch (err) {
-                dialogs.alert({ title: 'Error', message: err.message, okButtonText: 'OK' })
+            if (!res.ok) {
+                const error = await res.json()
+                throw new Error(error.message || 'Error en la petición')
             }
-        },
+
+            // Espera a que se cierre el alert antes de emitir el cierre
+            await dialogs.alert({
+                title: 'Éxito',
+                message: this.mode === 'edit' ? 'Usuario actualizado' : 'Usuario creado',
+                okButtonText: 'OK',
+            });
+
+            // Emitir true para indicar que debe refrescarse
+            this.$emit('close', true);
+        } catch (err) {
+            dialogs.alert({ title: 'Error', message: err.message, okButtonText: 'OK' })
+        }
+    },
     },
 }
 </script>
