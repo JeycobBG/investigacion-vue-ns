@@ -5,8 +5,7 @@
             <Button text="Crear Usuario" @tap="openCreateModal" row="0" class="create-button" />
             <StackLayout row="1">
                 <ActivityIndicator :busy="isLoading" />
-                <ListView v-if="listViewVisible" :key="listKey" for="user in users" @itemTap="onItemTap"
-                    class="user-list">
+                <ListView :key="listKey" for="user in users" @itemTap="onItemTap" class="user-list">
                     <v-template>
                         <GridLayout columns="*, auto" class="user-item">
                             <Label :text="user.name" col="0" class="username" />
@@ -19,15 +18,6 @@
                 </ListView>
             </StackLayout>
         </GridLayout>
-        
-        <!-- Modal -->
-        <UserModal
-            v-if="modalVisible"
-            :user="selectedUser"
-            :mode="modalMode"
-            @close="onModalClose"
-            @refreshUsers="refreshPage"
-        />
     </Page>
 </template>
 
@@ -40,11 +30,7 @@ export default {
     data() {
         return {
             users: [],
-            listKey: 0, // Usado para forzar el render del ListView
-            listViewVisible: true, // Control de visibilidad para forzar reconstrucción
-            modalVisible: false,
-            modalMode: 'create',
-            selectedUser: null,
+            listKey: 0,
             isLoading: false,
         };
     },
@@ -52,99 +38,136 @@ export default {
         console.log('---------------------------');
         console.log('Componente UserList montado');
         console.log('---------------------------');
-
         this.fetchUsers();
+    },
+    watch: {
+        users(newUsers) {
+            console.log('Lista de usuarios actualizada:', newUsers);
+        },
     },
     methods: {
         async fetchUsers() {
+            console.log('Obteniendo usuarios...');
             this.isLoading = true;
             try {
-                const res = await fetch('http://10.0.2.2:5140/api/User');
-                if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
-                
+                const res = await fetch('http://10.0.2.2:5140/api/User', {
+                    method: 'GET',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    throw new Error(`Error al obtener usuarios: ${res.status} ${res.statusText}`);
+                }
+
                 const data = await res.json();
-                this.users = Array.isArray(data) ? data : [];
+                if (!Array.isArray(data)) {
+                    throw new Error('La respuesta no es un array válido.');
+                }
+
+                // Mapear los datos para asegurar la estructura correcta
+                const mappedData = data.map(user => ({
+                    id: user.id || user.Id,
+                    name: user.name || user.Name,
+                    email: user.email || user.Email,
+                }));
+
+                console.log('Usuarios recibidos:', mappedData);
+                this.$set(this, 'users', [...mappedData]);
             } catch (err) {
-                console.error('Error al obtener usuarios:', err);
-                Dialogs.alert({
+                await Dialogs.alert({
                     title: 'Error',
-                    message: 'No se pudieron cargar los usuarios',
-                    okButtonText: 'OK'
+                    message: err.message || 'No se pudo conectar al servidor',
+                    okButtonText: 'OK',
                 });
             } finally {
                 this.isLoading = false;
             }
         },
         openCreateModal() {
-            this.selectedUser = null;
-            this.modalMode = 'create';
-            this.modalVisible = true;
+            console.log('Abriendo modal para crear usuario');
+            const options = {
+                context: { user: null, mode: 'create' },
+                fullscreen: false,
+            };
+            this.$showModal(UserModal, options).then((result) => {
+                console.log('Resultado del modal:', result);
+                if (result === 'refresh') {
+                    this.refreshPage();
+                }
+            });
         },
         openEditModal(user) {
-            this.selectedUser = { ...user };
-            this.modalMode = 'edit';
-            this.modalVisible = true;
+            console.log('Abriendo modal para editar usuario:', user);
+            const options = {
+                context: { user: { ...user }, mode: 'edit' },
+                fullscreen: false,
+            };
+            this.$showModal(UserModal, options).then((result) => {
+                console.log('Resultado del modal:', result);
+                if (result === 'refresh') {
+                    this.refreshPage();
+                }
+            });
         },
         async confirmDelete(user) {
-            const confirm = await Dialogs.confirm({
-                title: 'Confirmar',
-                message: `¿Eliminar a ${user.name}?`,
+            const result = await Dialogs.confirm({
+                title: 'Confirmar eliminación',
+                message: `¿Eliminar usuario ${user.name}?`,
                 okButtonText: 'Sí',
-                cancelButtonText: 'No'
+                cancelButtonText: 'No',
             });
-            if (confirm) await this.deleteUser(user.id);
+            if (result) {
+                await this.deleteUser(user.id);
+            }
         },
         async deleteUser(id) {
+            console.log('Eliminando usuario con ID:', id);
             this.isLoading = true;
             try {
                 const res = await fetch(`http://10.0.2.2:5140/api/User/${id}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                    },
                 });
-                
-                if (!res.ok) throw new Error('Error al eliminar');
-                
-                Dialogs.alert({
+
+                if (!res.ok) {
+                    const error = await res.json();
+                    console.error('Error del backend:', error);
+                    throw new Error(error.message || 'Error al eliminar');
+                }
+
+                console.log('Usuario eliminado correctamente.');
+                await Dialogs.alert({
                     title: 'Éxito',
                     message: 'Usuario eliminado',
-                    okButtonText: 'OK'
+                    okButtonText: 'OK',
                 });
-                
+
                 this.refreshPage();
             } catch (err) {
-                Dialogs.alert({
+                console.error('Error al eliminar usuario:', err);
+                await Dialogs.alert({
                     title: 'Error',
-                    message: 'No se pudo eliminar',
-                    okButtonText: 'OK'
+                    message: err.message || 'No se pudo eliminar el usuario',
+                    okButtonText: 'OK',
                 });
             } finally {
                 this.isLoading = false;
             }
         },
-        onModalClose() {
-            this.modalVisible = false;
-        },
         refreshPage() {
-            // Primero refrescamos los datos
-            this.fetchUsers();
-            
-            // Luego recargamos la vista usando el Frame de Nativescript
-            const frame = require('@nativescript/core/ui/frame').Frame;
-            const currentPage = frame.topmost().currentPage;
-            
-            if (currentPage) {
-                frame.topmost().navigate({
-                    create: () => {
-                        const Vue = require('nativescript-vue').default;
-                        return new Vue({
-                            template: `<UserList />`,
-                            components: { UserList: this.$options }
-                        }).$mount().$el.nativeView;
-                    },
-                    clearHistory: true
-                });
-            }
-        }
-    }
+            console.log('Refrescando lista de usuarios...');
+            this.fetchUsers().then(() => {
+                this.listKey += 1;
+            });
+        },
+    },
 };
 </script>
 
@@ -152,7 +175,7 @@ export default {
 .user-item {
     padding: 10;
     border-bottom-width: 1;
-    border-color: #eee;
+    border-color: #ccc;
 }
 .username {
     font-size: 16;
@@ -162,18 +185,15 @@ export default {
     background-color: #4CAF50;
     color: white;
     margin: 10;
-    border-radius: 5;
 }
 .edit-button {
     background-color: #2196F3;
     color: white;
     margin-right: 5;
-    border-radius: 5;
 }
 .delete-button {
     background-color: #F44336;
     color: white;
-    border-radius: 5;
 }
 .user-list {
     margin: 10;
