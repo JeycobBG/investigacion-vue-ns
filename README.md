@@ -153,3 +153,5 @@ Una vez configurado el entorno correctamente y compilado con éxito desde la ter
 * [NativeScript CLI](https://docs.nativescript.org/)
 * [Adoptium JDK Downloads](https://adoptium.net/en-GB/download/)
 * [Android Studio SDK Manager](https://developer.android.com/studio/intro)
+
+## 📺 Enlace al video tutorial de youtube: https://youtu.be/x3G8v9kBBSc
